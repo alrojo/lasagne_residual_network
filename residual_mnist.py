@@ -21,7 +21,7 @@ import theano
 import theano.tensor as T
 
 import lasagne
-
+from parmesan.layers import NormalizeLayer, ScaleAndShiftLayer
 
 # ################## Download and prepare the MNIST dataset ##################
 # This is just some way of getting the MNIST dataset from an online location
@@ -86,9 +86,9 @@ def load_dataset():
 conv = lasagne.layers.Conv2DLayer
 pool = lasagne.layers.Pool2DLayer
 sumlayer = lasagne.layer.ElemwiseSumLayer
-def convLayer(l, num_filters, filter_size=(1,1), stride=(1,1) nonlinearity=lasagne.nonlinearities.relu, name, W=lasagne.init.He, b=lasagne.init.He):
+def convLayer(l, num_filters, filter_size=(1,1), stride=(1,1), nonlinearity=lasagne.nonlinearities.relu, name, W=lasagne.init.He, b=lasagne.init.He):
     l = conv(
-        l, filter_size=filter_size, num_filters=num_filters, stride=stride
+        l, filter_size=filter_size, num_filters=num_filters, stride=stride,
         name="Conv-" + name, W=W, b=b, nonlinearity=None, pad='same')
     l = NormalizeLayer(l,name="BN-" + name)
     l = ScaleAndShiftLayer(l,name="SaS-" + name)
