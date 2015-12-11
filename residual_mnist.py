@@ -85,19 +85,20 @@ def load_dataset():
 #
 conv = lasagne.layers.Conv2DLayer
 pool = lasagne.layers.Pool2DLayer
-sumlayer = lasagne.layer.ElemwiseSumLayer
-def convLayer(l, num_filters, name="no_name", filter_size=(1,1), stride=(1,1), nonlinearity=lasagne.nonlinearities.relu, W=lasagne.init.He, b=lasagne.init.He):
-    l = conv(
-        l, filter_size=filter_size, num_filters=num_filters, stride=stride,
-        name="Conv-" + name, W=W, b=b, nonlinearity=None, pad='same')
-    l = NormalizeLayer(l,name="BN-" + name)
-    l = ScaleAndShiftLayer(l,name="SaS-" + name)
-    l = lasagne.layers.NonlinearityLayer(l,nonlinearity=nonlinearity,name="Nonlin-" + name)
+sumlayer = lasagne.layers.ElemwiseSumLayer
+nonlin = lasagne.layers.NonlinearityLayer
+def convLayer(l, num_filters, filter_size=(1,1), stride=(1,1), nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.He, b=lasagne.init.He):
+    l = conv(l, filter_size=filter_size, num_filters=num_filters,
+		    stride=stride, nonlinearity=None, pad='same')
+    l = NormalizeLayer(l)
+    l = ScaleAndShiftLayer(l)
+    l = nonlin(l, nonlinearity=nonlinearity)
+    return l
 
-def bottleneck(l, num_filters, stride=(1,1) **kwargs):
-    l = convLayer(l, num_filters=num_filters, stride=stride, **kwargs)
-    l = convLayer(l, num_filters=num_filters, filter_size=(3,3), **kwargs)
-    l = convLayer(l, num_filters=num_filters*4, **kwargs)
+def bottleneck(l, num_filters, stride=(1,1)):
+    l = convLayer(l, num_filters=num_filters, stride=stride)
+    l = convLayer(l, num_filters=num_filters, filter_size=(3,3))
+    l = convLayer(l, num_filters=num_filters*4)
     return l
 
 
@@ -219,4 +220,4 @@ def main():
         test_acc / test_batches * 100))
 
 if __name__ == '__main__':
-    main(**kwargs)
+    main()
