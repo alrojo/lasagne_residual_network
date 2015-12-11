@@ -10,7 +10,7 @@ More in-depth examples and reproductions of paper results are maintained in
 a separate repository: https://github.com/Lasagne/Recipes
 """
 
-from __future__ import print_function
+#from __future__ import print_function
 
 import sys
 import os
@@ -108,8 +108,11 @@ def build_model(input_var=None):
     
     l_in = lasagne.layers.InputLayer(shape=(None, 1, 28, 28),
                                         input_var=input_var)
-    l1_a = sumlayer(bottleneck(l_in, num_filters=16), l_in)
-    l1_b = sumlayer(bottleneck(l1_a, num_filters=16), l1_a)
+    l1_a = sumlayer([bottleneck(l_in, num_filters=16), l_in])
+    print l1_a.output_shape
+    #print bottleneck(l1_a, num_filters=16).output_shape()
+    assert False
+    l1_b = sumlayer([bottleneck(l1_a, num_filters=16), l1_a])
     l1_c = sumlayer(bottleneck(l1_b, num_filters=16), l1_b)
     l1_c_stride = convLayer(l1_c, num_filters=32, stride=(2,2)) #should these also be batch norm?
     
