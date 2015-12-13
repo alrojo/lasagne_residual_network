@@ -19,6 +19,7 @@ import time
 import numpy as np
 import theano
 import theano.tensor as T
+import string
 
 import lasagne
 from parmesan.layers import NormalizeLayer, ScaleAndShiftLayer
@@ -157,6 +158,14 @@ def main():
 
     print("Building model and compiling functions...")
     network = build_model(input_var)
+
+    all_layers = lasagne.layers.get_all_layers(network)
+    num_params = lasagne.layers.count_params(network)
+    print("  number of parameters: %d" % num_params)
+    print("  layer output shapes:")
+    for layer in all_layers:
+        name = string.ljust(layer.__class__.__name__, 32)
+        print("    %s %s" % (name, lasagne.layers.get_output_shape(layer)))
 
     print("Loading data...")
     X_train, y_train, X_val, y_val, X_test, y_test = load_dataset()
