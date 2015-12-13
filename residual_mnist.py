@@ -108,23 +108,21 @@ def build_model(input_var=None):
     
     l_in = lasagne.layers.InputLayer(shape=(None, 1, 28, 28),
                                         input_var=input_var)
-    l1 = convLayer(l_in, num_filters=16) #Needs a starting layer, l_in doesnt have dimensionality
+    l1 = convLayer(l_in, num_filters=16*4) #Needs a starting layer, l_in doesnt have dimensionality
+
     l1_a = sumlayer([bottleneck(l1, num_filters=16), l1])
-    print l1_a.output_shape
-    #print bottleneck(l1_a, num_filters=16).output_shape()
-    assert False
     l1_b = sumlayer([bottleneck(l1_a, num_filters=16), l1_a])
-    l1_c = sumlayer(bottleneck(l1_b, num_filters=16), l1_b)
-    l1_c_stride = convLayer(l1_c, num_filters=32, stride=(2,2)) #should these also be batch norm?
+    l1_c = sumlayer([bottleneck(l1_b, num_filters=16), l1_b])
+    l1_c_stride = convLayer(l1_c, num_filters=32*4, stride=(2,2)) #should these also be batch norm?
     
-    l2_a = sumlayer(bottleneck(l1_c, num_filters=32, stride=(2,2)), l1_c_stride)
-    l2_b = sumlayer(bottleneck(l2_a, num_filters=32), l2_a)
-    l2_c = sumlayer(bottleneck(l2_b, num_filters=32), l2_b)
-    l2_c_stride = convLayer(l2_c, num_filters=32, stride=(2,2)) #should these also be batch norm?
+    l2_a = sumlayer([bottleneck(l1_c, num_filters=32, stride=(2,2)), l1_c_stride])
+    l2_b = sumlayer([bottleneck(l2_a, num_filters=32), l2_a])
+    l2_c = sumlayer([bottleneck(l2_b, num_filters=32), l2_b])
+    l2_c_stride = convLayer(l2_c, num_filters=64*4, stride=(2,2)) #should these also be batch norm?
     
-    l3_a = sumlayer(bottleneck(l2_c, num_filters=64, stride=(2,2)), l2_c_stride)
-    l3_b = sumlayer(bottleneck(l3_a, num_filters=64), l2_a)
-    l3_c = sumlayer(bottleneck(l3_b, num_filters=64), l2_b)
+    l3_a = sumlayer([bottleneck(l2_c, num_filters=64, stride=(2,2)), l2_c_stride])
+    l3_b = sumlayer([bottleneck(l3_a, num_filters=64), l3_a])
+    l3_c = sumlayer([bottleneck(l3_b, num_filters=64), l3_b])
             
     l_out = lasagne.layers.DenseLayer(
                 lasagne.layers.dropout(l3_c, p=.5),
