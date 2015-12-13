@@ -153,8 +153,6 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 
 def main():
     num_epochs=500
-    print("Loading data...")
-    X_train, y_train, X_val, y_val, X_test, y_test = load_dataset()
 
     input_var = T.tensor4('inputs')
     target_var = T.ivector('targets')
@@ -162,6 +160,9 @@ def main():
     print("Building model and compiling functions...")
     network = build_model(input_var)
 
+    print("Loading data...")
+    X_train, y_train, X_val, y_val, X_test, y_test = load_dataset()
+    
     print("Building cost functions ...")
     prediction = lasagne.layers.get_output(network)
     loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
