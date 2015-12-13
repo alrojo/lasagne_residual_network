@@ -195,7 +195,10 @@ def main():
         train_err = 0
         train_batches = 0
         start_time = time.time()
+        i = 0 #for debug
         for batch in iterate_minibatches(X_train, y_train, 500, shuffle=True):
+            print i
+            i += 1            
             inputs, targets = batch
             train_err += train_fn(inputs, targets)
             train_batches += 1
