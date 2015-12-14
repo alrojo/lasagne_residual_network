@@ -15,6 +15,7 @@ from __future__ import print_function
 import sys
 import os
 import time
+import string
 
 import numpy as np
 import theano
@@ -160,6 +161,7 @@ def build_cnn(input_var=None):
     nonlinearity = lasagne.nonlinearities.rectify
     maxpool = lasagne.layers.MaxPool2DLayer
     nonlin = lasagne.layers.NonlinearityLayer
+    sumlayer = lasagne.layers.ElemwiseSumLayer
     def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1), nonlinearity=nonlinearity, pad='same'):
 	l = conv(
 	    l, num_filters=num_filters,
@@ -167,32 +169,45 @@ def build_cnn(input_var=None):
 	    nonlinearity=None, pad=pad)
 	l = nonlin(l, nonlinearity=nonlinearity)
 	return l
+
+    def bottleneck(l, num_filters, stride=(1, 1)):
+	l = convLayer(
+	    l, num_filters=num_filters, stride=stride)
+	l = convLayer(
+	    l, num_filters=num_filters, filter_size=(3, 3))
+	l = convLayer(
+	    l, num_filters=num_filters*4)
+	return l
     # As a third model, we'll create a CNN of two convolution + pooling stages
     # and a fully-connected hidden layer in front of the output layer.
 
     # Input layer, as usual:
-    network = lasagne.layers.InputLayer(shape=(None, 1, 28, 28),
+    l_in = lasagne.layers.InputLayer(shape=(None, 1, 28, 28),
                                         input_var=input_var)
     # This time we do not apply input dropout, as it tends to work less well
     # for convolutional layers.
 
     # Convolutional layer with 32 kernels of size 5x5. Strided and padded
     # convolutions are supported as well; see the docstring.
-    network = convLayer(
-            network, num_filters=32, filter_size=(5, 5),
-            pad='same')
+    l1 = convLayer(
+	    l_in, num_filters=32, filter_size=(3, 3), stride=(2, 2))
+    #l1_a = sumlayer([bottleneck(l1, num_filters=8), l1])
+    #l1_b = sumlayer([bottleneck(l1_a, num_filters=8), l1_a])
+    #l1_bp = maxpool(l1_b, pool_size=(2, 2))
     
+    #l2_a = bottleneck(l1_b, num_filters=8, stride=(2, 2))
+    #l1_c = sumlayer([bottleneck(l1_b, num_filters=8), l1_b])
+    #l1_c = maxpool(l1_c, pool_size=(2, 2))
+    #l1_c_residual = convLayer(l1_c, num_filters=16*4, stride=(2, 2))
+
+    #l2_a = sumlayer([bottleneck(l1_c, num_filters=16, stride=(2, 2)), l1_c_residual])
     # Expert note: Lasagne provides alternative convolutional layers that
     # override Theano's choice of which implementation to use; for details
     # please see http://lasagne.readthedocs.org/en/latest/user/tutorial.html.
 
-    # Max-pooling layer of factor 2 in both dimensions:
-    network = maxpool(network, pool_size=(2, 2))
-
     # Another convolution with 32 5x5 kernels, and another 2x2 pooling:
     network = convLayer(
-            network, num_filters=32, filter_size=(5, 5),
-            pad='same')
+            l1, num_filters=32, filter_size=(3, 3))
     network = maxpool(network, pool_size=(2, 2))
 
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
@@ -259,6 +274,15 @@ def main(model='mlp', num_epochs=500):
     else:
         print("Unrecognized model type %r." % model)
         return
+
+    all_layers = lasagne.layers.get_all_layers(network)
+    num_params = lasagne.layers.count_params(network)
+    print("  numer of layers: %d" % len(all_layers)) 
+    print("  number of parameters: %d" % num_params)
+    print("  layer output shapes:")
+    for layer in all_layers:
+	name = string.ljust(layer.__class__.__name__, 32)
+	print("    %s %s" %(name, lasagne.layers.get_output_shape(layer)))
 
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
