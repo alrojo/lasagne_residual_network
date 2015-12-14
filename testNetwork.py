@@ -157,6 +157,16 @@ def build_custom_mlp(input_var=None, depth=2, width=800, drop_input=.2,
 
 def build_cnn(input_var=None):
     conv = lasagne.layers.Conv2DLayer
+    nonlinearity = lasagne.nonlinearities.rectify
+    maxpool = lasagne.layers.MaxPool2DLayer
+    nonlin = lasagne.layers.NonlinearityLayer
+    def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1), nonlinearity=nonlinearity, pad='same'):
+	l = conv(
+	    l, num_filters=num_filters,
+	    filter_size=filter_size, stride=stride,
+	    nonlinearity=None, pad=pad)
+	l = nonlin(l, nonlinearity=nonlinearity)
+	return l
     # As a third model, we'll create a CNN of two convolution + pooling stages
     # and a fully-connected hidden layer in front of the output layer.
 
@@ -168,22 +178,22 @@ def build_cnn(input_var=None):
 
     # Convolutional layer with 32 kernels of size 5x5. Strided and padded
     # convolutions are supported as well; see the docstring.
-    network = conv(
+    network = convLayer(
             network, num_filters=32, filter_size=(5, 5),
-            nonlinearity=lasagne.nonlinearities.rectify,
-            W=lasagne.init.GlorotUniform())
+            pad='same')
+    
     # Expert note: Lasagne provides alternative convolutional layers that
     # override Theano's choice of which implementation to use; for details
     # please see http://lasagne.readthedocs.org/en/latest/user/tutorial.html.
 
     # Max-pooling layer of factor 2 in both dimensions:
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
+    network = maxpool(network, pool_size=(2, 2))
 
     # Another convolution with 32 5x5 kernels, and another 2x2 pooling:
-    network = lasagne.layers.Conv2DLayer(
+    network = convLayer(
             network, num_filters=32, filter_size=(5, 5),
-            nonlinearity=lasagne.nonlinearities.rectify)
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
+            pad='same')
+    network = maxpool(network, pool_size=(2, 2))
 
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
