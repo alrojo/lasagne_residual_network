@@ -170,13 +170,13 @@ def build_cnn(input_var=None):
     network = lasagne.layers.Conv2DLayer(
             network, num_filters=32, filter_size=(5, 5),
             nonlinearity=lasagne.nonlinearities.rectify,
-            W=lasagne.init.GlorotUniform())
+            W=lasagne.init.GlorotUniform(), stride=(2, 2))
     # Expert note: Lasagne provides alternative convolutional layers that
     # override Theano's choice of which implementation to use; for details
     # please see http://lasagne.readthedocs.org/en/latest/user/tutorial.html.
 
     # Max-pooling layer of factor 2 in both dimensions:
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
+#    network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
 
     # Another convolution with 32 5x5 kernels, and another 2x2 pooling:
     network = lasagne.layers.Conv2DLayer(
