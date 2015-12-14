@@ -110,6 +110,7 @@ def build_model(input_var=None):
     l_in = lasagne.layers.InputLayer(shape=(None, 1, 28, 28),
                                         input_var=input_var)
     l1 = convLayer(l_in, num_filters=16*4) #Needs a starting layer, l_in doesnt have dimensionality
+    return l1
 
     l1_a = sumlayer([bottleneck(l1, num_filters=16), l1])
     l1_b = sumlayer([bottleneck(l1_a, num_filters=16), l1_a])
