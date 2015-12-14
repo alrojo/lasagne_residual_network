@@ -22,7 +22,7 @@ import theano
 import theano.tensor as T
 
 import lasagne
-
+import parmesan
 
 # ################## Download and prepare the MNIST dataset ##################
 # This is just some way of getting the MNIST dataset from an online location
@@ -162,11 +162,17 @@ def build_cnn(input_var=None):
     maxpool = lasagne.layers.MaxPool2DLayer
     nonlin = lasagne.layers.NonlinearityLayer
     sumlayer = lasagne.layers.ElemwiseSumLayer
-    def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1), nonlinearity=nonlinearity, pad='same'):
+    scaleandshiftlayer = parmesan.layers.ScaleAndShiftLayer
+    normalizelayer = parmesan.layers.NormalizeLayer
+    W = lasagne.init.HeNormal
+    b = lasagne.init.HeNormal
+    def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1), nonlinearity=nonlinearity, pad='same', W=W, b=b):
 	l = conv(
 	    l, num_filters=num_filters,
 	    filter_size=filter_size, stride=stride,
 	    nonlinearity=None, pad=pad)
+	l = normalizelayer(l)
+	l = scaleandshiftlayer(l)
 	l = nonlin(l, nonlinearity=nonlinearity)
 	return l
 
@@ -190,35 +196,26 @@ def build_cnn(input_var=None):
     # Convolutional layer with 32 kernels of size 5x5. Strided and padded
     # convolutions are supported as well; see the docstring.
     l1 = convLayer(
-	    l_in, num_filters=32, filter_size=(3, 3), stride=(2, 2))
-    #l1_a = sumlayer([bottleneck(l1, num_filters=8), l1])
-    #l1_b = sumlayer([bottleneck(l1_a, num_filters=8), l1_a])
-    #l1_bp = maxpool(l1_b, pool_size=(2, 2))
-    
-    #l2_a = bottleneck(l1_b, num_filters=8, stride=(2, 2))
-    #l1_c = sumlayer([bottleneck(l1_b, num_filters=8), l1_b])
-    #l1_c = maxpool(l1_c, pool_size=(2, 2))
-    #l1_c_residual = convLayer(l1_c, num_filters=16*4, stride=(2, 2))
+	    l_in, num_filters=32, filter_size=(3, 3))
+    l1_a = sumlayer([bottleneck(l1, num_filters=8), l1])
+    l1_b = sumlayer([bottleneck(l1_a, num_filters=8), l1_a])
+    l1_c = sumlayer([bottleneck(l1_b, num_filters=8), l1_b])
+    l1_c = maxpool(l1_c, pool_size=(2, 2))
+    l1_c_residual = convLayer(l1_c, num_filters=16*4)
 
-    #l2_a = sumlayer([bottleneck(l1_c, num_filters=16, stride=(2, 2)), l1_c_residual])
-    # Expert note: Lasagne provides alternative convolutional layers that
-    # override Theano's choice of which implementation to use; for details
-    # please see http://lasagne.readthedocs.org/en/latest/user/tutorial.html.
+    l2_a = sumlayer([bottleneck(l1_c, num_filters=16), l1_c_residual])
+    l2_b = sumlayer([bottleneck(l2_a, num_filters=16), l2_a])
+    l2_c = sumlayer([bottleneck(l2_b, num_filters=16), l2_b])
+    l2_c = maxpool(l2_c, pool_size=(2, 2))
+    l2_c_residual = convLayer(l2_c, num_filters=32*4)
 
-    # Another convolution with 32 5x5 kernels, and another 2x2 pooling:
-    network = convLayer(
-            l1, num_filters=32, filter_size=(3, 3))
-    network = maxpool(network, pool_size=(2, 2))
-
-    # A fully-connected layer of 256 units with 50% dropout on its inputs:
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
-            num_units=256,
-            nonlinearity=lasagne.nonlinearities.rectify)
+    l3_a = sumlayer([bottleneck(l2_c, num_filters=32), l2_c_residual])
+    l3_b = sumlayer([bottleneck(l3_a, num_filters=32), l3_a])
+    l3_c = sumlayer([bottleneck(l3_b, num_filters=32), l3_b])
 
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
+            l3_c,
             num_units=10,
             nonlinearity=lasagne.nonlinearities.softmax)
 

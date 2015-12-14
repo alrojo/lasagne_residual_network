@@ -85,6 +85,7 @@ def load_dataset():
 
 #
 conv = lasagne.layers.Conv2DLayer
+maxpool = lasagne.layers.MaxPool2DLayer
 pool = lasagne.layers.Pool2DLayer
 sumlayer = lasagne.layers.ElemwiseSumLayer
 nonlin = lasagne.layers.NonlinearityLayer
@@ -114,17 +115,19 @@ def build_model(input_var=None):
     l1_a = sumlayer([bottleneck(l1, num_filters=16), l1])
     l1_b = sumlayer([bottleneck(l1_a, num_filters=16), l1_a])
     l1_c = sumlayer([bottleneck(l1_b, num_filters=16), l1_b])
-    l1_c_stride = convLayer(l1_c, num_filters=32*4, stride=(2,2)) #should these also be batch norm?
+    l1_c = maxpool(l1_c, pool_size=(2, 2))
+    l1_c_residual = convLayer(l1_c, num_filters=32*4) #should these also be batch norm?
     
-    l2_a = sumlayer([bottleneck(l1_c, num_filters=32, stride=(2,2)), l1_c_stride])
+    l2_a = sumlayer([bottleneck(l1_c, num_filters=32), l1_c_residual])
     l2_b = sumlayer([bottleneck(l2_a, num_filters=32), l2_a])
     l2_c = sumlayer([bottleneck(l2_b, num_filters=32), l2_b])
-    l2_c_stride = convLayer(l2_c, num_filters=64*4, stride=(2,2)) #should these also be batch norm?
+    l2_c = maxpool(l2_c, pool_size=(2, 2))
+    l2_c_residual = convLayer(l2_c, num_filters=64*4) #should these also be batch norm?
     
-    l3_a = sumlayer([bottleneck(l2_c, num_filters=64, stride=(2,2)), l2_c_stride])
+    l3_a = sumlayer([bottleneck(l2_c, num_filters=64), l2_c_residual])
     l3_b = sumlayer([bottleneck(l3_a, num_filters=64), l3_a])
     l3_c = sumlayer([bottleneck(l3_b, num_filters=64), l3_b])
-            
+
     l_out = lasagne.layers.DenseLayer(
                 lasagne.layers.dropout(l3_c, p=.5),
                 num_units=10,
@@ -161,6 +164,7 @@ def main():
 
     all_layers = lasagne.layers.get_all_layers(network)
     num_params = lasagne.layers.count_params(network)
+    print("  number of layers: %d" % len(all_layers))
     print("  number of parameters: %d" % num_params)
     print("  layer output shapes:")
     for layer in all_layers:
