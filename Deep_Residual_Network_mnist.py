@@ -158,8 +158,10 @@ def build_custom_mlp(input_var=None, depth=2, width=800, drop_input=.2,
 
 def build_cnn(input_var=None):
     conv = lasagne.layers.Conv2DLayer
+#    conv = lasagne.layers.Conv2DDNNLayer # cuDNN
     nonlinearity = lasagne.nonlinearities.rectify
-    maxpool = lasagne.layers.MaxPool2DLayer
+    maxpool = lasagne.layers.Maxpool2DLayer
+#    maxpool = lasagne.layers.MaxPool2DDNNLayer # cuDNN
     nonlin = lasagne.layers.NonlinearityLayer
     sumlayer = lasagne.layers.ElemwiseSumLayer
     scaleandshiftlayer = parmesan.layers.ScaleAndShiftLayer
