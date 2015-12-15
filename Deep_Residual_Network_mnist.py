@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 
 """
-Usage example employing Lasagne for digit recognition using the MNIST dataset.
-This example is deliberately structured as a long flat file, focusing on how
-to use Lasagne, instead of focusing on writing maximally modular and reusable
-code. It is used as the foundation for the introductory Lasagne tutorial:
-http://lasagne.readthedocs.org/en/latest/user/tutorial.html
-More in-depth examples and reproductions of paper results are maintained in
-a separate repository: https://github.com/Lasagne/Recipes
+Lasagne implementation of ILSVRC2015 winner on the mnist dataset
+Deep Residual Learning for Image Recognition
+http://arxiv.org/abs/1512.03385
 """
 
 from __future__ import print_function
@@ -84,14 +80,11 @@ def load_dataset():
 
 # ##################### Build the neural network model #######################
 
-def build_cnn(input_var=None):
+def build_cnn(input_var=None, n=1):
     # Setting up layers
 #    conv = lasagne.layers.Conv2DLayer
     conv = lasagne.layers.dnn.Conv2DDNNLayer # cuDNN
     nonlinearity = lasagne.nonlinearities.rectify
-#    maxpool = lasagne.layers.MaxPool2DLayer
-    maxpool = lasagne.layers.dnn.MaxPool2DDNNLayer # cuDNN
-    nonlin = lasagne.layers.NonlinearityLayer
     sumlayer = lasagne.layers.ElemwiseSumLayer
 #    scaleandshiftlayer = parmesan.layers.ScaleAndShiftLayer
 #    normalizelayer = parmesan.layers.NormalizeLayer
@@ -108,13 +101,19 @@ def build_cnn(input_var=None):
         return l
     
     # Bottleneck architecture as descriped in paper
-    def bottleneck(l, num_filters, stride=(1, 1)):
+    def bottleneck(l, num_filters, stride=(1, 1), nonlinearity=nonlinearity):
         l = convLayer(
-            l, num_filters=num_filters, stride=stride)
+            l, num_filters=num_filters, stride=stride, nonlinearity=nonlinearity)
         l = convLayer(
-            l, num_filters=num_filters, filter_size=(3, 3))
+            l, num_filters=num_filters, filter_size=(3, 3), nonlinearity=nonlinearity)
         l = convLayer(
-        l, num_filters=num_filters*4)
+            l, num_filters=num_filters*4, nonlinearity=nonlinearity)
+        return l
+
+    # Simply stacks the bottlenecks, makes it easy to model size of architecture with int n   
+    def bottlestack(l, n, num_filters):
+        for i in range(n):
+            l = sumlayer([bottleneck(l, num_filters=num_filters), l])
         return l
 
     # Building the network
@@ -123,24 +122,22 @@ def build_cnn(input_var=None):
     # First layer just a plain convLayer
     l1 = convLayer(
 	    l_in, num_filters=32, filter_size=(3, 3))
-    # making bottlenecks and residuals!
-    l1_a = sumlayer([bottleneck(l1, num_filters=8), l1])
-    l1_b = sumlayer([bottleneck(l1_a, num_filters=8), l1_a])
-    l1_c = sumlayer([bottleneck(l1_b, num_filters=8), l1_b])
-    l1_c_residual = convLayer(l1_c, num_filters=16*4, stride=(2, 2), nonlinearity=None)
 
-    l2_a = sumlayer([bottleneck(l1_c, num_filters=16, stride=(2, 2)), l1_c_residual])
-    l2_b = sumlayer([bottleneck(l2_a, num_filters=16), l2_a])
-    l2_c = sumlayer([bottleneck(l2_b, num_filters=16), l2_b])
-    l2_c_residual = convLayer(l2_c, num_filters=32*4, stride=(2, 2), nonlinearity=None)
+    # Stacking bottlenecks and making residuals!
 
-    l3_a = sumlayer([bottleneck(l2_c, num_filters=32, stride=(2, 2)), l2_c_residual])
-    l3_b = sumlayer([bottleneck(l3_a, num_filters=32), l3_a])
-    l3_c = sumlayer([bottleneck(l3_b, num_filters=32), l3_b])
+    l1_bottlestack = bottlestack(l1, n=n-1, num_filters=8) #Using the -1 to make it fit with size of the others
+    l1_residual = convLayer(l1_bottlestack, num_filters=16*4, stride=(2, 2), nonlinearity=None)
+
+    l2 = sumlayer([bottleneck(l1_bottlestack, num_filters=16, stride=(2, 2)), l1_residual])
+    l2_bottlestack = bottlestack(l2, n=n, num_filters=16)
+    l2_residual = convLayer(l2_bottlestack, num_filters=32*4, stride=(2, 2), nonlinearity=None)
+
+    l3 = sumlayer([bottleneck(l2_bottlestack, num_filters=32, stride=(2, 2)), l2_residual])
+    l3_bottlestack = bottlestack(l3, n=n, num_filters=32)
 
     # And, finally, the 10-unit output layer:
     network = lasagne.layers.DenseLayer(
-            l3_c,
+            l3_bottlestack,
             num_units=10,
             nonlinearity=lasagne.nonlinearities.softmax)
 
@@ -174,7 +171,8 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 # more functions to better separate the code, but it wouldn't make it any
 # easier to read.
 
-def main(model='mlp', num_epochs=500):
+def main(n=1, num_epochs=500):
+    print("Amount of bottlenecks: %d" % n)
     # Load the dataset
     print("Loading data...")
     X_train, y_train, X_val, y_val, X_test, y_test = load_dataset()
@@ -185,7 +183,7 @@ def main(model='mlp', num_epochs=500):
 
     # Create neural network model (depending on first command line parameter)
     print("Building model and compiling functions...")
-    network = build_cnn(input_var)
+    network = build_cnn(input_var, n)
     all_layers = lasagne.layers.get_all_layers(network)
     num_params = lasagne.layers.count_params(network)
     print("  numer of layers: %d" % len(all_layers)) 
@@ -286,18 +284,14 @@ def main(model='mlp', num_epochs=500):
 if __name__ == '__main__':
     if ('--help' in sys.argv) or ('-h' in sys.argv):
         print("Trains a neural network on MNIST using Lasagne.")
-        print("Usage: %s [MODEL [EPOCHS]]" % sys.argv[0])
+        print("Usage: %s [SIZE [EPOCHS]]" % sys.argv[0])
         print()
-        print("MODEL: 'mlp' for a simple Multi-Layer Perceptron (MLP),")
-        print("       'custom_mlp:DEPTH,WIDTH,DROP_IN,DROP_HID' for an MLP")
-        print("       with DEPTH hidden layers of WIDTH units, DROP_IN")
-        print("       input dropout and DROP_HID hidden dropout,")
-        print("       'cnn' for a simple Convolutional Neural Network (CNN).")
+        print("SIZE: Define amount of bottlenecks with integer, e.g. 3")
         print("EPOCHS: number of training epochs to perform (default: 500)")
     else:
         kwargs = {}
         if len(sys.argv) > 1:
-            kwargs['model'] = sys.argv[1]
+            kwargs['n'] = int(sys.argv[1])
         if len(sys.argv) > 2:
             kwargs['num_epochs'] = int(sys.argv[2])
         main(**kwargs)
