@@ -42,7 +42,7 @@ import theano.tensor as T
 from lasagne import init
 from lasagne import nonlinearities
 
-from lasagne.base import Layer
+from lasagne import Layer
 
 
 __all__ = [

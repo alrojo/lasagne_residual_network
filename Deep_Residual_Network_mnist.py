@@ -23,7 +23,7 @@ import theano.tensor as T
 
 import lasagne
 import lasagne.layers.dnn
-import BatchNormLayer
+#import BatchNormLayer
 
 # ################## Download and prepare the MNIST dataset ##################
 # This is just some way of getting the MNIST dataset from an online location
@@ -95,7 +95,7 @@ def build_cnn(input_var=None):
     sumlayer = lasagne.layers.ElemwiseSumLayer
 #    scaleandshiftlayer = parmesan.layers.ScaleAndShiftLayer
 #    normalizelayer = parmesan.layers.NormalizeLayer
-    batchnorm = BatchNormLayer.BatchNormLayer
+    #batchnorm = BatchNormLayer.BatchNormLayer
     # Conv layers must have batchnormalization and
     # Micrsoft PReLU paper style init(might have the wrong one!!)
     def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1),
@@ -104,7 +104,7 @@ def build_cnn(input_var=None):
             l, num_filters=num_filters,
             filter_size=filter_size, stride=stride,
             nonlinearity=nonlinearity, pad=pad)
-        l = batchnorm(l)
+     #   l = batchnorm(l)
         return l
     
     # Bottleneck architecture as descriped in paper
