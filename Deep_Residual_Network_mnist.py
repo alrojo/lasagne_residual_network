@@ -95,6 +95,7 @@ def build_cnn(input_var=None):
     sumlayer = lasagne.layers.ElemwiseSumLayer
 #    scaleandshiftlayer = parmesan.layers.ScaleAndShiftLayer
 #    normalizelayer = parmesan.layers.NormalizeLayer
+<<<<<<< HEAD
     batchnorm = BatchNormLayer.BatchNormLayer
     # Conv layers must have batchnormalization and
     # Micrsoft PReLU paper style init(might have the wrong one!!)
@@ -108,6 +109,21 @@ def build_cnn(input_var=None):
         return l
     
     # Bottleneck architecture as descriped in paper
+=======
+    W = lasagne.init.HeNormal
+    b = lasagne.init.HeNormal
+    def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1), nonlinearity=nonlinearity, pad='same', W=W, b=b):
+	l = conv(
+	    l, num_filters=num_filters,
+	    filter_size=filter_size, stride=stride,
+	    nonlinearity=None, pad=pad)
+#	l = normalizelayer(l)
+#	l = scaleandshiftlayer(l)
+	if nonlinearity != None:
+	    l = nonlin(l, nonlinearity=nonlinearity)
+	return l
+
+>>>>>>> e01ab36436d93179b71eb6bbe6ccb590f3b0655e
     def bottleneck(l, num_filters, stride=(1, 1)):
         l = convLayer(
             l, num_filters=num_filters, stride=stride)
@@ -127,12 +143,12 @@ def build_cnn(input_var=None):
     l1_a = sumlayer([bottleneck(l1, num_filters=8), l1])
     l1_b = sumlayer([bottleneck(l1_a, num_filters=8), l1_a])
     l1_c = sumlayer([bottleneck(l1_b, num_filters=8), l1_b])
-    l1_c_residual = convLayer(l1_c, num_filters=16*4, stride=(2, 2), nonlinearities=None)
+    l1_c_residual = convLayer(l1_c, num_filters=16*4, stride=(2, 2), nonlinearity=None)
 
-    l2_a = sumlayer([bottleneck(l1_c, num_filters=16, stide=(2, 2)), l1_c_residual])
+    l2_a = sumlayer([bottleneck(l1_c, num_filters=16, stride=(2, 2)), l1_c_residual])
     l2_b = sumlayer([bottleneck(l2_a, num_filters=16), l2_a])
     l2_c = sumlayer([bottleneck(l2_b, num_filters=16), l2_b])
-    l2_c_residual = convLayer(l2_c, num_filters=32*4, stride=(2, 2), nonlinearities=None)
+    l2_c_residual = convLayer(l2_c, num_filters=32*4, stride=(2, 2), nonlinearity=None)
 
     l3_a = sumlayer([bottleneck(l2_c, num_filters=32, stride=(2, 2)), l2_c_residual])
     l3_b = sumlayer([bottleneck(l3_a, num_filters=32), l3_a])
