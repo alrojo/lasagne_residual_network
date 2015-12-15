@@ -95,7 +95,6 @@ def build_cnn(input_var=None):
     sumlayer = lasagne.layers.ElemwiseSumLayer
 #    scaleandshiftlayer = parmesan.layers.ScaleAndShiftLayer
 #    normalizelayer = parmesan.layers.NormalizeLayer
-<<<<<<< HEAD
     batchnorm = BatchNormLayer.BatchNormLayer
     # Conv layers must have batchnormalization and
     # Micrsoft PReLU paper style init(might have the wrong one!!)
@@ -109,21 +108,6 @@ def build_cnn(input_var=None):
         return l
     
     # Bottleneck architecture as descriped in paper
-=======
-    W = lasagne.init.HeNormal
-    b = lasagne.init.HeNormal
-    def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1), nonlinearity=nonlinearity, pad='same', W=W, b=b):
-	l = conv(
-	    l, num_filters=num_filters,
-	    filter_size=filter_size, stride=stride,
-	    nonlinearity=None, pad=pad)
-#	l = normalizelayer(l)
-#	l = scaleandshiftlayer(l)
-	if nonlinearity != None:
-	    l = nonlin(l, nonlinearity=nonlinearity)
-	return l
-
->>>>>>> e01ab36436d93179b71eb6bbe6ccb590f3b0655e
     def bottleneck(l, num_filters, stride=(1, 1)):
         l = convLayer(
             l, num_filters=num_filters, stride=stride)
