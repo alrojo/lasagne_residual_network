@@ -23,7 +23,7 @@ import theano.tensor as T
 
 import lasagne
 import lasagne.layers.dnn
-import parmesan
+import BatchNormLayer
 
 # ################## Download and prepare the MNIST dataset ##################
 # This is just some way of getting the MNIST dataset from an online location
@@ -83,9 +83,9 @@ def load_dataset():
 
 
 # ##################### Build the neural network model #######################
-# This script supports three types of models. For each one, we define a
 
 def build_cnn(input_var=None):
+    # Setting up layers
 #    conv = lasagne.layers.Conv2DLayer
     conv = lasagne.layers.dnn.Conv2DDNNLayer # cuDNN
     nonlinearity = lasagne.nonlinearities.rectify
@@ -95,39 +95,35 @@ def build_cnn(input_var=None):
     sumlayer = lasagne.layers.ElemwiseSumLayer
 #    scaleandshiftlayer = parmesan.layers.ScaleAndShiftLayer
 #    normalizelayer = parmesan.layers.NormalizeLayer
-    W = lasagne.init.HeNormal
-    b = lasagne.init.HeNormal
-    def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1), nonlinearity=nonlinearity, pad='same', W=W, b=b):
-	l = conv(
-	    l, num_filters=num_filters,
-	    filter_size=filter_size, stride=stride,
-	    nonlinearity=None, pad=pad)
-#	l = normalizelayer(l)
-#	l = scaleandshiftlayer(l)
-	l = nonlin(l, nonlinearity=nonlinearity)
-	return l
-
+    batchnorm = BatchNormLayer.BatchNormLayer
+    # Conv layers must have batchnormalization and
+    # Micrsoft PReLU paper style init(might have the wrong one!!)
+    def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1),
+                  nonlinearity=nonlinearity, pad='same', W=lasagne.init.HeNormal, b=lasagne.init.HeNormal):
+        l = conv(
+            l, num_filters=num_filters,
+            filter_size=filter_size, stride=stride,
+            nonlinearity=nonlinearity, pad=pad)
+        l = batchnorm(l)
+        return l
+    
+    # Bottleneck architecture as descriped in paper
     def bottleneck(l, num_filters, stride=(1, 1)):
-	l = convLayer(
-	    l, num_filters=num_filters, stride=stride)
-	l = convLayer(
-	    l, num_filters=num_filters, filter_size=(3, 3))
-	l = convLayer(
-	    l, num_filters=num_filters*4)
-	return l
-    # As a third model, we'll create a CNN of two convolution + pooling stages
-    # and a fully-connected hidden layer in front of the output layer.
+        l = convLayer(
+            l, num_filters=num_filters, stride=stride)
+        l = convLayer(
+            l, num_filters=num_filters, filter_size=(3, 3))
+        l = convLayer(
+        l, num_filters=num_filters*4)
+        return l
 
-    # Input layer, as usual:
+    # Building the network
     l_in = lasagne.layers.InputLayer(shape=(None, 1, 28, 28),
                                         input_var=input_var)
-    # This time we do not apply input dropout, as it tends to work less well
-    # for convolutional layers.
-
-    # Convolutional layer with 32 kernels of size 5x5. Strided and padded
-    # convolutions are supported as well; see the docstring.
+    # First layer just a plain convLayer
     l1 = convLayer(
 	    l_in, num_filters=32, filter_size=(3, 3))
+    # making bottlenecks and residuals!
     l1_a = sumlayer([bottleneck(l1, num_filters=8), l1])
     l1_b = sumlayer([bottleneck(l1_a, num_filters=8), l1_a])
     l1_c = sumlayer([bottleneck(l1_b, num_filters=8), l1_b])
@@ -142,7 +138,7 @@ def build_cnn(input_var=None):
     l3_b = sumlayer([bottleneck(l3_a, num_filters=32), l3_a])
     l3_c = sumlayer([bottleneck(l3_b, num_filters=32), l3_b])
 
-    # And, finally, the 10-unit output layer with 50% dropout on its inputs:
+    # And, finally, the 10-unit output layer:
     network = lasagne.layers.DenseLayer(
             l3_c,
             num_units=10,
