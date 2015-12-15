@@ -93,8 +93,8 @@ def build_cnn(input_var=None):
     maxpool = lasagne.layers.dnn.MaxPool2DDNNLayer # cuDNN
     nonlin = lasagne.layers.NonlinearityLayer
     sumlayer = lasagne.layers.ElemwiseSumLayer
-    scaleandshiftlayer = parmesan.layers.ScaleAndShiftLayer
-    normalizelayer = parmesan.layers.NormalizeLayer
+#    scaleandshiftlayer = parmesan.layers.ScaleAndShiftLayer
+#    normalizelayer = parmesan.layers.NormalizeLayer
     W = lasagne.init.HeNormal
     b = lasagne.init.HeNormal
     def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1), nonlinearity=nonlinearity, pad='same', W=W, b=b):
@@ -131,16 +131,14 @@ def build_cnn(input_var=None):
     l1_a = sumlayer([bottleneck(l1, num_filters=8), l1])
     l1_b = sumlayer([bottleneck(l1_a, num_filters=8), l1_a])
     l1_c = sumlayer([bottleneck(l1_b, num_filters=8), l1_b])
-    l1_c = maxpool(l1_c, pool_size=(2, 2))
-    l1_c_residual = convLayer(l1_c, num_filters=16*4)
+    l1_c_residual = convLayer(l1_c, num_filters=16*4, stride=(2, 2), nonlinearities=None)
 
-    l2_a = sumlayer([bottleneck(l1_c, num_filters=16), l1_c_residual])
+    l2_a = sumlayer([bottleneck(l1_c, num_filters=16, stide=(2, 2)), l1_c_residual])
     l2_b = sumlayer([bottleneck(l2_a, num_filters=16), l2_a])
     l2_c = sumlayer([bottleneck(l2_b, num_filters=16), l2_b])
-    l2_c = maxpool(l2_c, pool_size=(2, 2))
-    l2_c_residual = convLayer(l2_c, num_filters=32*4)
+    l2_c_residual = convLayer(l2_c, num_filters=32*4, stride=(2, 2), nonlinearities=None)
 
-    l3_a = sumlayer([bottleneck(l2_c, num_filters=32), l2_c_residual])
+    l3_a = sumlayer([bottleneck(l2_c, num_filters=32, stride=(2, 2)), l2_c_residual])
     l3_b = sumlayer([bottleneck(l3_a, num_filters=32), l3_a])
     l3_c = sumlayer([bottleneck(l3_b, num_filters=32), l3_b])
 
