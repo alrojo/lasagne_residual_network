@@ -20,7 +20,7 @@ import theano.tensor as T
 import lasagne
 import lasagne.layers.dnn
 import BatchNormLayer
-
+sys.setrecursionlimit(10000)
 # ################## Download and prepare the MNIST dataset ##################
 # This is just some way of getting the MNIST dataset from an online location
 # and loading it into numpy arrays. It doesn't involve Lasagne at all.
@@ -264,7 +264,7 @@ def main(n=1, num_filters=8, num_epochs=500):
         train_batches = 0
         start_time = time.time()
         for batch in iterate_minibatches(X_train, y_train, 500, shuffle=True):
-            inputs, targets = batch
+    	    inputs, targets = batch
             train_err += train_fn(inputs, targets)
             train_batches += 1
 
@@ -313,10 +313,11 @@ def main(n=1, num_filters=8, num_epochs=500):
 
 if __name__ == '__main__':
     if ('--help' in sys.argv) or ('-h' in sys.argv):
-        print("Trains a neural network on MNIST using Lasagne.")
-        print("Usage: %s [SIZE [EPOCHS]]" % sys.argv[0])
+        print("Trains a Deep Residual neural network on MNIST using Lasagne.")
+        print("Usage: %s [NUM_BOTTLENECKS] [NUM_FILTERS] [EPOCHS]" % sys.argv[0])
         print()
-        print("SIZE: Define amount of bottlenecks with integer, e.g. 3")
+        print("NUM_BOTTLENECKS: Define amount of bottlenecks with integer, e.g. 3")
+	print("NUM_FILTERS: Defines the amount of filters in the first layer(doubled at each filter halfing)")
         print("EPOCHS: number of training epochs to perform (default: 500)")
     else:
         kwargs = {}
