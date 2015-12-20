@@ -80,7 +80,7 @@ def load_dataset():
 
 # ##################### Build the neural network model #######################
 
-def build_cnn(input_var=None, n=1):
+def build_cnn(input_var=None, n=1, num_filters=8):
     # Setting up layers
 #    conv = lasagne.layers.Conv2DLayer
     conv = lasagne.layers.dnn.Conv2DDNNLayer # cuDNN
@@ -121,19 +121,19 @@ def build_cnn(input_var=None, n=1):
                                         input_var=input_var)
     # First layer just a plain convLayer
     l1 = convLayer(
-	    l_in, num_filters=32, filter_size=(3, 3))
+	    l_in, num_filters=num_filters*4, filter_size=(3, 3)) # Filters multiplied by 4 as bottleneck returns such size
 
     # Stacking bottlenecks and making residuals!
 
-    l1_bottlestack = bottlestack(l1, n=n-1, num_filters=8) #Using the -1 to make it fit with size of the others
-    l1_residual = convLayer(l1_bottlestack, num_filters=16*4, stride=(2, 2), nonlinearity=None)
+    l1_bottlestack = bottlestack(l1, n=n-1, num_filters=num_filters) #Using the -1 to make it fit with size of the others
+    l1_residual = convLayer(l1_bottlestack, num_filters=num_filters*4*2, stride=(2, 2), nonlinearity=None) #Multiplying by 2 because of feature reduction by 2
 
-    l2 = sumlayer([bottleneck(l1_bottlestack, num_filters=16, stride=(2, 2)), l1_residual])
-    l2_bottlestack = bottlestack(l2, n=n, num_filters=16)
-    l2_residual = convLayer(l2_bottlestack, num_filters=32*4, stride=(2, 2), nonlinearity=None)
+    l2 = sumlayer([bottleneck(l1_bottlestack, num_filters=num_filters*2, stride=(2, 2)), l1_residual])
+    l2_bottlestack = bottlestack(l2, n=n, num_filters=num_filters*2)
+    l2_residual = convLayer(l2_bottlestack, num_filters=num_filters*2*2*4, stride=(2, 2), nonlinearity=None)# again, this is now the second reduciton in features
 
-    l3 = sumlayer([bottleneck(l2_bottlestack, num_filters=32, stride=(2, 2)), l2_residual])
-    l3_bottlestack = bottlestack(l3, n=n, num_filters=32)
+    l3 = sumlayer([bottleneck(l2_bottlestack, num_filters=num_filters*2*2, stride=(2, 2)), l2_residual])
+    l3_bottlestack = bottlestack(l3, n=n, num_filters=num_filters*2*2)
 
     # And, finally, the 10-unit output layer:
     network = lasagne.layers.DenseLayer(
@@ -171,7 +171,10 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 # more functions to better separate the code, but it wouldn't make it any
 # easier to read.
 
-def main(n=1, num_epochs=500):
+def main(n=1, num_filters=8, num_epochs=500):
+    assert n>=0
+    assert num_filters>0
+    assert num_epochs>0
     print("Amount of bottlenecks: %d" % n)
     # Load the dataset
     print("Loading data...")
@@ -183,16 +186,43 @@ def main(n=1, num_epochs=500):
 
     # Create neural network model (depending on first command line parameter)
     print("Building model and compiling functions...")
-    network = build_cnn(input_var, n)
+    network = build_cnn(input_var, n, num_filters)
     all_layers = lasagne.layers.get_all_layers(network)
     num_params = lasagne.layers.count_params(network)
-    print("  numer of layers: %d" % len(all_layers)) 
-    print("  number of parameters: %d" % num_params)
+    num_conv = 0
+    num_nonlin = 0
+    num_input = 0
+    num_batchnorm = 0
+    num_elemsum = 0
+    num_dense = 0
+    num_unknown = 0
     print("  layer output shapes:")
     for layer in all_layers:
 	name = string.ljust(layer.__class__.__name__, 32)
 	print("    %s %s" %(name, lasagne.layers.get_output_shape(layer)))
-
+	if "Conv2D" in name:
+	    num_conv += 1
+	elif "NonlinearityLayer" in name:
+	    num_nonlin += 1
+	elif "InputLayer" in name:
+	    num_input += 1
+	elif "BatchNormLayer" in name:
+	    num_batchnorm += 1
+	elif "ElemwiseSumLayer" in name:
+	    num_elemsum += 1
+	elif "DenseLayer" in name:
+	    num_dense += 1
+	else:
+	    num_unknown += 1
+    print("  no. of InputLayers: %d" % num_input)
+    print("  no. of Conv2DLayers: %d" % num_conv)
+    print("  no. of BatchNormLayers: %d" % num_batchnorm)
+    print("  no. of NonlinearityLayers: %d" % num_nonlin)
+    print("  no. of DenseLayers: %d" % num_dense)
+    print("  no. of ElemwiseSumLayers: %d" % num_elemsum)
+    print("  no. of Unknown Layers: %d" % num_unknown)
+    print("  total no. of layers: %d" % len(all_layers))
+    print("  no. of parameters: %d" % num_params)
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
     prediction = lasagne.layers.get_output(network)
@@ -292,6 +322,8 @@ if __name__ == '__main__':
         kwargs = {}
         if len(sys.argv) > 1:
             kwargs['n'] = int(sys.argv[1])
-        if len(sys.argv) > 2:
-            kwargs['num_epochs'] = int(sys.argv[2])
+	if len(sys.argv) > 2:
+	    kwargs['num_filters'] = int(sys.argv[2])
+        if len(sys.argv) > 3:
+            kwargs['num_epochs'] = int(sys.argv[3])
         main(**kwargs)
