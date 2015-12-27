@@ -92,16 +92,15 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     # Conv layers must have batchnormalization and
     # Micrsoft PReLU paper style init(might have the wrong one!!)
     def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1),
-                  nonlinearity=nonlinearity, pad='same', W=lasagne.init.HeNormal, b=lasagne.init.HeNormal):
-        l = conv(
-            l, num_filters=num_filters,
-            filter_size=filter_size, stride=stride,
-            nonlinearity=nonlinearity, pad=pad)
+                  nonlinearity=nonlinearity, pad='same', W=lasagne.init.HeNormal(gain='relu')):
+        l = conv(l, num_filters=num_filters, filter_size=filter_size,
+            stride=stride, nonlinearity=nonlinearity,
+            pad=pad, W=W)
         l = batchnorm(l)
         return l
     
     # Bottleneck architecture as descriped in paper
-    def bottleneck(l, num_filters, stride=(1, 1), nonlinearity=nonlinearity):
+    def bottleneckDeep(l, num_filters, stride=(1, 1), nonlinearity=nonlinearity):
         l = convLayer(
             l, num_filters=num_filters, stride=stride, nonlinearity=nonlinearity)
         l = convLayer(
@@ -110,9 +109,27 @@ def build_cnn(input_var=None, n=1, num_filters=8):
             l, num_filters=num_filters*4, nonlinearity=nonlinearity)
         return l
 
+    def bottleneckDeep2(l, num_filters, stride=(1, 1), nonlinearity=nonlinearity):
+        l = convLayer(
+            l, num_filters=num_filters, nonlinearity=nonlinearity)
+        l = convLayer(
+            l, num_filters=num_filters, filter_size=(3, 3), stride=stride, nonlinearity=nonlinearity)
+        l = convLayer(
+            l, num_filters=num_filters*4, nonlinearity=nonlinearity)
+        return l
+
+    def bottleneckShallow(l, num_filters, stride=(1, 1), nonlinearity=nonlinearity):
+        l = convLayer(
+            l, num_filters=num_filters*4, filter_size=(3, 3), stride=stride, nonlinearity=nonlinearity)
+        l = convLayer(
+            l, num_filters=num_filters*4, filter_size=(3, 3), nonlinearity=nonlinearity)
+        return l
+        
+    bottleneck = bottleneckShallow
+
     # Simply stacks the bottlenecks, makes it easy to model size of architecture with int n   
     def bottlestack(l, n, num_filters):
-        for i in range(n):
+        for _ in range(n):
             l = sumlayer([bottleneck(l, num_filters=num_filters), l])
         return l
 
