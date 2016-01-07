@@ -96,6 +96,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
         l = conv(l, num_filters=num_filters, filter_size=filter_size,
             stride=stride, nonlinearity=nonlinearity,
             pad=pad, W=W)
+        # Notice that the batch_norm layer reallocated the nonlinearity form the conv
         l = batchnorm(l)
         return l
     
@@ -108,7 +109,8 @@ def build_cnn(input_var=None, n=1, num_filters=8):
         l = convLayer(
             l, num_filters=num_filters*4, nonlinearity=nonlinearity)
         return l
-
+    # Bottleneck architecture with more efficiency (the post with Kaiming he's response)
+    # https://www.reddit.com/r/MachineLearning/comments/3ywi6x/deep_residual_learning_the_bottleneck/
     def bottleneckDeep2(l, num_filters, stride=(1, 1), nonlinearity=nonlinearity):
         l = convLayer(
             l, num_filters=num_filters, nonlinearity=nonlinearity)
@@ -117,7 +119,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
         l = convLayer(
             l, num_filters=num_filters*4, nonlinearity=nonlinearity)
         return l
-
+    # The "simple" residual block architecture
     def bottleneckShallow(l, num_filters, stride=(1, 1), nonlinearity=nonlinearity):
         l = convLayer(
             l, num_filters=num_filters*4, filter_size=(3, 3), stride=stride, nonlinearity=nonlinearity)
