@@ -21,6 +21,7 @@ Note: CUDA and CuDNN might require root privileges.
 The code is setup with CuDNN. If you do not have access to CuDNN then you need to comment out:
 * github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L21
 * github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L86
+
 And comment "in"
 * github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L85
 
