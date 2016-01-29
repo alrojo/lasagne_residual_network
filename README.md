@@ -22,7 +22,7 @@ The code is setup with CuDNN. If you do not have access to CuDNN then you need t
 * github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L21
 * github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L86
 
-And comment "in"
+And remove comments from
 * github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L85
 
 ## Set-up and run
