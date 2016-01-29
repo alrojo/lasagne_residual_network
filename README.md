@@ -39,10 +39,16 @@ An example of running with num_filters=8, num_bottlenecks per layer=3 and num_ep
 
 >>python Deep_Residual_Network_mnist.py 8 3 500
 
-
 ## BatchNormLayer
 
 Using a different version of BatchNormLayer (f0k's original PR before turning to cuDNN style) see  github.com/Lasagne/Lasagne/pull/467 for more information.
+
+If you want to use the Lasagne's implementation then change:
+github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L22
+
+to
+
+import lasagne.layers.BatchNormLayer
 
 ## NOTE
 
