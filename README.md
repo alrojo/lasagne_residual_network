@@ -4,7 +4,7 @@ Recreating the Deep Residual Learning for Image Recognition
 
 http://arxiv.org/abs/1512.03385
 
-# Dependancies
+## Dependancies
 
 Note: CUDA and CuDNN might require root privileges.
 - Ubuntu 14.04
@@ -16,7 +16,7 @@ Note: CUDA and CuDNN might require root privileges.
   - Lasagne (should only require 0.1 from pip install, but have only tested on 0.2dev)
 - CuDNN (only tested with v2)
 
-# CuDNN
+## CuDNN
 
 The code is setup with CuDNN. If you do not have access to CuDNN then you need to comment out:
 * github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L21
@@ -24,7 +24,7 @@ The code is setup with CuDNN. If you do not have access to CuDNN then you need t
 And comment "in"
 * github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L85
 
-# Set-up and run
+## Set-up and run
 
 The code is based on lasagnes own mnist example: github.com/Lasagne/Lasagne/blob/master/examples/mnist.py
 
@@ -39,10 +39,10 @@ An example of running with num_filters=8, num_bottlenecks per layer=3 and num_ep
 >>python Deep_Residual_Network_mnist.py 8 3 500
 
 
-# BatchNormLayer
+## BatchNormLayer
 
 Using a different version of BatchNormLayer (f0k's original PR before turning to cuDNN style) see  github.com/Lasagne/Lasagne/pull/467 for more information.
 
-# NOTE
+## NOTE
 
-If any of the provided steps does not work for you, please let me know and report an issue/PR.
+If any of the provided steps does not work for you please let me know and report an issue/PR.
