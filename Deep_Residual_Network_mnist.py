@@ -109,7 +109,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     # helper function to handle filters/strides when increasing dims
     def filters_increase_dims(l, increase_dims):
         in_num_filters = l.output_shape[1]
-        if increase_dim:
+        if increase_dims:
             first_stride = (2, 2)
             out_num_filters = in_num_filters*2
         else:
