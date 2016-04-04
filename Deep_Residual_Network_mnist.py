@@ -141,7 +141,10 @@ def build_cnn(input_var=None, n=1, num_filters=8):
         else:
             # identity shortcut, option a in paper
             p = projection_a(l_inp)
+        print(p.output_shape())
+        print(l.output_shape())
         l = sumlayer([l, p])
+        print(l.output_shape())
         l = nonlin_layer(l, nonlinearity=nonlinearity)
         return l
 
