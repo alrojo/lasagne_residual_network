@@ -87,7 +87,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     nonlinearity = lasagne.nonlinearities.rectify
     nonlin_layer = lasagne.layers.NonlinearityLayer
     sumlayer = lasagne.layers.ElemwiseSumLayer
-    #batchnorm = BatchNormLayer.batch_norm
+    #batchnorm = BatchNormLayer.BatchNormLayer
     batchnorm = lasagne.layers.BatchNormLayer
 
     # option A for projection as described in paper
@@ -143,6 +143,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
         l = sumlayer([l, p])
         l = nonlin_layer(l, nonlinearity=nonlinearity)
         return l
+<<<<<<< HEAD
 
     # block as described in second paper on the subject (by same authors):
     # http://arxiv.org/abs/1603.05027
@@ -185,12 +186,45 @@ def build_cnn(input_var=None, n=1, num_filters=8):
         l = batchnorm(l)
         l = nonlin_layer(l, nonlinearity=nonlinearity)
         l = conv(l, num_filters=scaled_filters, filter_size=(3, 3),
-                 stride=first_stride, nonlinearity=None, pad='same',
+                 stride=(1, 1), nonlinearity=None, pad='same',
                  W=lasagne.init.HeNormal(gain='relu'))
         l = batchnorm(l)
         l = nonlin_layer(l, nonlinearity=nonlinearity)
-        l = conv(l, num_filters=n_filters, filter_size=(3, 3),
+        l = conv(l, num_filters=n_filters, filter_size=(1, 1),
                  stride=(1, 1), nonlinearity=None, pad='same',
+                 W=lasagne.init.HeNormal(gain='relu'))
+        if projection:
+            # projection shortcut option b in paper
+            p = projection_b(l_inp)
+        else:
+            # identity shortcut, option a in paper
+            p = projection_a(l_inp)
+        l = sumlayer([l, p])
+        l = nonlin_layer(l, nonlinearity=nonlinearity)
+
+    # Bottleneck architecture with more efficiency (the post with Kaiming he's response)
+    # https://www.reddit.com/r/MachineLearning/comments/3ywi6x/deep_residual_learning_the_bottleneck/ 
+    def bottleneck_block_fast(l_inp, nonlinearity=nonlinearity,
+                     increase_dim=False, projection=True):
+        # first figure filters/strides
+        n_filters, first_stride = filters_increase_dims(l_inp, increase_dims)
+        # conv -> BN -> nonlin -> conv -> BN -> nonlin -> conv -> BN -> sum
+        # -> nonlin
+        # first make the bottleneck, scale the filters ..!
+        scale = 4 # as per bottleneck architecture used in paper
+        scaled_filters = n_filters/scale
+        l = conv(l_inp, num_filters=scaled_filters, filter_size=(1, 1),
+                 stride=(1, 1), nonlinearity=None, pad='same',
+                 W=lasagne.init.HeNormal(gain='relu'))
+        l = batchnorm(l)
+        l = nonlin_layer(l, nonlinearity=nonlinearity)
+        l = conv(l, num_filters=scaled_filters, filter_size=(3, 3),
+                 stride=(1, 1), nonlinearity=None, pad='same',
+                 W=lasagne.init.HeNormal(gain='relu'))
+        l = batchnorm(l)
+        l = nonlin_layer(l, nonlinearity=nonlinearity)
+        l = conv(l, num_filters=n_filters, filter_size=(1, 1),
+                 stride=last_stride, nonlinearity=None, pad='same',
                  W=lasagne.init.HeNormal(gain='relu'))
         if projection:
             # projection shortcut option b in paper
