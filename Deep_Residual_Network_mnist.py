@@ -114,7 +114,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
             out_num_filters = in_num_filters*2
         else:
             first_stride = (1, 1)
-            out_num_fitlers = in_num_filters
+            out_num_filters = in_num_filters
  
         return out_num_filters, first_stride
 
