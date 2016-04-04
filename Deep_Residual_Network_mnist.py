@@ -123,7 +123,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     def res_block_v1(l_inp, nonlinearity=nonlinearity,
                      increase_dim=False, projection=True):
         # first figure filters/strides
-        n_filters, first_stride = filters_increase_dims(l_inp, increase_dims)
+        n_filters, first_stride = filters_increase_dims(l_inp, increase_dim)
         # conv -> BN -> nonlin -> conv -> BN -> sum -> nonlin
         l = conv(l_inp, num_filters=n_filters, filter_size=(3, 3),
                  stride=first_stride, nonlinearity=None, pad='same',
@@ -149,7 +149,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     def res_block_v2(l_inp, nonlinearity=nonlinearity,
                      increase_dim=False, projection=True):
         # first figure filters/strides
-        n_filters, first_stride = filters_increase_dims(l_inp, increase_dims)
+        n_filters, first_stride = filters_increase_dims(l_inp, increase_dim)
         # BN -> nonlin -> conv -> BN -> nonlin -> conv -> sum
         l = batchnorm(l_inp)
         l = nonlin_layer(l, nonlinearity=nonlinearity)
@@ -173,7 +173,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     def bottleneck_block(l_inp, nonlinearity=nonlinearity,
                      increase_dim=False, projection=True):
         # first figure filters/strides
-        n_filters, first_stride = filters_increase_dims(l_inp, increase_dims)
+        n_filters, first_stride = filters_increase_dims(l_inp, increase_dim)
         # conv -> BN -> nonlin -> conv -> BN -> nonlin -> conv -> BN -> sum
         # -> nonlin
         # first make the bottleneck, scale the filters ..!
@@ -206,7 +206,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     def bottleneck_block_fast(l_inp, nonlinearity=nonlinearity,
                      increase_dim=False, projection=True):
         # first figure filters/strides
-        n_filters, first_stride = filters_increase_dims(l_inp, increase_dims)
+        n_filters, first_stride = filters_increase_dims(l_inp, increase_dim)
         # conv -> BN -> nonlin -> conv -> BN -> nonlin -> conv -> BN -> sum
         # -> nonlin
         # first make the bottleneck, scale the filters ..!
