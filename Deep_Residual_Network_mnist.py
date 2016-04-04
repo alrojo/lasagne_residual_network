@@ -254,13 +254,13 @@ def build_cnn(input_var=None, n=1, num_filters=8):
 
     # Stacking bottlenecks and increasing dims! (while reducing shape size)
 
-    l1_bs = bottlestack(l1, n=n)
+    l1_bs = blockstack(l1, n=n)
     l1_id = res_block(l, increase_dim=True)
 
-    l2_bs = bottlestack(l1_id, n=n)
+    l2_bs = blockstack(l1_id, n=n)
     l2_id = res_block(l2_bs, increase_dim=True)
 
-    l3_bs = bottlestack(l2_id, n=n)
+    l3_bs = blockstack(l2_id, n=n)
     l3_id = res_block(l3_bs, increase_dim=True)
 
     # And, finally, the 10-unit output layer:
