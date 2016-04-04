@@ -143,7 +143,6 @@ def build_cnn(input_var=None, n=1, num_filters=8):
         l = sumlayer([l, p])
         l = nonlin_layer(l, nonlinearity=nonlinearity)
         return l
-<<<<<<< HEAD
 
     # block as described in second paper on the subject (by same authors):
     # http://arxiv.org/abs/1603.05027
