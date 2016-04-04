@@ -85,76 +85,154 @@ def build_cnn(input_var=None, n=1, num_filters=8):
 #    conv = lasagne.layers.Conv2DLayer
     conv = lasagne.layers.dnn.Conv2DDNNLayer # cuDNN
     nonlinearity = lasagne.nonlinearities.rectify
+    nonlin_layer = lasagne.layers.NonlinearityLayer
     sumlayer = lasagne.layers.ElemwiseSumLayer
-#    scaleandshiftlayer = parmesan.layers.ScaleAndShiftLayer
-#    normalizelayer = parmesan.layers.NormalizeLayer
-    batchnorm = BatchNormLayer.batch_norm
-    # Conv layers must have batchnormalization and
-    # Micrsoft PReLU paper style init(might have the wrong one!!)
-    def convLayer(l, num_filters, filter_size=(1, 1), stride=(1, 1),
-                  nonlinearity=nonlinearity, pad='same', W=lasagne.init.HeNormal(gain='relu')):
-        l = conv(l, num_filters=num_filters, filter_size=filter_size,
-            stride=stride, nonlinearity=nonlinearity,
-            pad=pad, W=W)
+    #batchnorm = BatchNormLayer.batch_norm
+    batchnorm = lasagne.layers.BatchNormLayer
+
+    # option A for projection as described in paper
+    # (should perform slightly worse than B)
+    def projection_a(l):
+       l = ExpressionLayer(l, lambda X: X[:, :, ::2, ::2], lambda s: (s[0], s[1], s[2]//2, s[3]//2))
+       l = padding = PadLayer(identity, [out_num_filters//4,0,0], batch_ndim=1)
+       return l 
+
+    # option B for projection as described in paper
+    def projection_b(l):
+        # twice normal channels when projecting!
+        n_filters = l.output_shape[1]*2 
+        l = conv(l_in, num_filters=out_num_filters, filter_size=(1, 1),
+                 stride=(2, 2), nonlinearity=None, pad='same', b=None)
+        l = batchnorm(p)
+        return l
+
+    # helper function to handle filters/strides when increasing dims
+    def filters_increase_dims(l, increase_dims):
+        in_num_filters = l.output_shape[1]
+        if increase_dim:
+            first_stride = (2, 2)
+            out_num_filters = in_num_filters*2
+        else:
+            first_stride = (1, 1)
+            out_num_fitlers = in_num_filters
+ 
+        return out_num_filters, first_stride
+
+    # block as described and used in cifar in the original paper:
+    # http://arxiv.org/abs/1512.03385
+    def res_block_v1(l_inp, nonlinearity=nonlinearity,
+                     increase_dim=False, projection=True):
+        # first figure filters/strides
+        n_filters, first_stride = filters_increase_dims(l_inp, increase_dims)
+        # conv -> BN -> nonlin -> conv -> BN -> sum -> nonlin
+        l = conv(l_inp, num_filters=n_filters, filter_size=(3, 3),
+                 stride=first_stride, nonlinearity=None, pad='same',
+                 W=lasagne.init.HeNormal(gain='relu'))
         l = batchnorm(l)
-        return l
-    
-    # Bottleneck architecture as descriped in paper
-    def bottleneckDeep(l, num_filters, stride=(1, 1), nonlinearity=nonlinearity):
-        l = convLayer(
-            l, num_filters=num_filters, stride=stride, nonlinearity=nonlinearity)
-        l = convLayer(
-            l, num_filters=num_filters, filter_size=(3, 3), nonlinearity=nonlinearity)
-        l = convLayer(
-            l, num_filters=num_filters*4, nonlinearity=nonlinearity)
-        return l
-
-    def bottleneckDeep2(l, num_filters, stride=(1, 1), nonlinearity=nonlinearity):
-        l = convLayer(
-            l, num_filters=num_filters, nonlinearity=nonlinearity)
-        l = convLayer(
-            l, num_filters=num_filters, filter_size=(3, 3), stride=stride, nonlinearity=nonlinearity)
-        l = convLayer(
-            l, num_filters=num_filters*4, nonlinearity=nonlinearity)
+        l = nonlin_layer(l, nonlinearity=nonlinearity)
+        l = conv(l, num_filters=n_filters, filter_size=(3, 3),
+                 stride=(1, 1), nonlinearity=None, pad='same',
+                 W=lasagne.init.HeNormal(gain='relu'))
+        l = batchnorm(l)
+        if projection:
+            # projection shortcut option b in paper
+            p = projection_b(l_inp)
+        else:
+            # identity shortcut, option a in paper
+            p = projection_a(l_inp)
+        l = sumlayer([l, p])
+        l = nonlin_layer(l, nonlinearity=nonlinearity)
         return l
 
-    def bottleneckShallow(l, num_filters, stride=(1, 1), nonlinearity=nonlinearity):
-        l = convLayer(
-            l, num_filters=num_filters*4, filter_size=(3, 3), stride=stride, nonlinearity=nonlinearity)
-        l = convLayer(
-            l, num_filters=num_filters*4, filter_size=(3, 3), nonlinearity=nonlinearity)
+    # block as described in second paper on the subject (by same authors):
+    # http://arxiv.org/abs/1603.05027
+    def res_block_v2(l_inp, nonlinearity=nonlinearity,
+                     increase_dim=False, projection=True):
+        # first figure filters/strides
+        n_filters, first_stride = filters_increase_dims(l_inp, increase_dims)
+        # BN -> nonlin -> conv -> BN -> nonlin -> conv -> sum
+        l = batchnorm(l_inp)
+        l = nonlin_layer(l, nonlinearity=nonlinearity)
+        l = conv(l, num_filters=n_filters, filter_size=(3, 3),
+                 stride=first_stride, nonlinearity=None, pad='same',
+                 W=lasagne.init.HeNormal(gain='relu'))
+        l = batchnorm(l)
+        l = nonlin_layer(l, nonlinearity=nonlinearity)
+        l = conv(l, num_filters=n_filters, filter_size=(3, 3),
+                 stride=(1, 1), nonlinearity=None, pad='same',
+                 W=lasagne.init.HeNormal(gain='relu'))
+        if projection:
+            # projection shortcut option b in paper
+            p = projection_b(l_inp)
+        else:
+            # identity shortcut, option a in paper
+            p = projection_a(l_inp)
+        l = sumlayer([l, p])
         return l
-        
-    bottleneck = bottleneckShallow
 
-    # Simply stacks the bottlenecks, makes it easy to model size of architecture with int n   
-    def bottlestack(l, n, num_filters):
+    def bottleneck_block(l_inp, nonlinearity=nonlinearity,
+                     increase_dim=False, projection=True):
+        # first figure filters/strides
+        n_filters, first_stride = filters_increase_dims(l_inp, increase_dims)
+        # conv -> BN -> nonlin -> conv -> BN -> nonlin -> conv -> BN -> sum
+        # -> nonlin
+        # first make the bottleneck, scale the filters ..!
+        scale = 4 # as per bottleneck architecture used in paper
+        scaled_filters = n_filters/scale
+        l = conv(l_inp, num_filters=scaled_filters, filter_size=(1, 1),
+                 stride=first_stride, nonlinearity=None, pad='same',
+                 W=lasagne.init.HeNormal(gain='relu'))
+        l = batchnorm(l)
+        l = nonlin_layer(l, nonlinearity=nonlinearity)
+        l = conv(l, num_filters=scaled_filters, filter_size=(3, 3),
+                 stride=first_stride, nonlinearity=None, pad='same',
+                 W=lasagne.init.HeNormal(gain='relu'))
+        l = batchnorm(l)
+        l = nonlin_layer(l, nonlinearity=nonlinearity)
+        l = conv(l, num_filters=n_filters, filter_size=(3, 3),
+                 stride=(1, 1), nonlinearity=None, pad='same',
+                 W=lasagne.init.HeNormal(gain='relu'))
+        if projection:
+            # projection shortcut option b in paper
+            p = projection_b(l_inp)
+        else:
+            # identity shortcut, option a in paper
+            p = projection_a(l_inp)
+        l = sumlayer([l, p])
+        l = nonlin_layer(l, nonlinearity=nonlinearity)
+        return l
+       
+    res_block = res_block_v1
+
+    # Stacks the bottlenecks, makes it easy to model size of architecture with int n   
+    def blockstack(l, n, nonlinearity=nonlinearity):
         for _ in range(n):
-            l = sumlayer([bottleneck(l, num_filters=num_filters), l])
+            l = res_block(l, nonlinearity=nonlinearity)
         return l
 
     # Building the network
     l_in = lasagne.layers.InputLayer(shape=(None, 1, 28, 28),
                                         input_var=input_var)
-    # First layer just a plain convLayer
-    l1 = convLayer(
-	    l_in, num_filters=num_filters*4, filter_size=(3, 3)) # Filters multiplied by 4 as bottleneck returns such size
+    # First layer! just a plain convLayer
+    l1 = conv(l_in, num_filters=num_filters, filter_size=(3, 3),
+              nonlinearity=None)
+    l1 = batchnorm(l1)
+    l1 = nonlin_layer(l1)
 
-    # Stacking bottlenecks and making residuals!
+    # Stacking bottlenecks and increasing dims! (while reducing shape size)
 
-    l1_bottlestack = bottlestack(l1, n=n-1, num_filters=num_filters) #Using the -1 to make it fit with size of the others
-    l1_residual = convLayer(l1_bottlestack, num_filters=num_filters*4*2, stride=(2, 2), nonlinearity=None) #Multiplying by 2 because of feature reduction by 2
+    l1_bs = bottlestack(l1, n=n)
+    l1_id = res_block(l, increase_dim=True)
 
-    l2 = sumlayer([bottleneck(l1_bottlestack, num_filters=num_filters*2, stride=(2, 2)), l1_residual])
-    l2_bottlestack = bottlestack(l2, n=n, num_filters=num_filters*2)
-    l2_residual = convLayer(l2_bottlestack, num_filters=num_filters*2*2*4, stride=(2, 2), nonlinearity=None)# again, this is now the second reduciton in features
+    l2_bs = bottlestack(l1_id, n=n)
+    l2_id = res_block(l2_bs, increase_dim=True)
 
-    l3 = sumlayer([bottleneck(l2_bottlestack, num_filters=num_filters*2*2, stride=(2, 2)), l2_residual])
-    l3_bottlestack = bottlestack(l3, n=n, num_filters=num_filters*2*2)
+    l3_bs = bottlestack(l2_id, n=n)
+    l3_id = res_block(l3_bs, increase_dim=True)
 
     # And, finally, the 10-unit output layer:
     network = lasagne.layers.DenseLayer(
-            l3_bottlestack,
+            l3_id,
             num_units=10,
             nonlinearity=lasagne.nonlinearities.softmax)
 
