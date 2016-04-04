@@ -99,10 +99,11 @@ def build_cnn(input_var=None, n=1, num_filters=8):
        return l
 
     # option B for projection as described in paper
-    def projection_b(l):
+    def projection_b(l_inp):
+        print('projection_b')
         # twice normal channels when projecting!
-        n_filters = l.output_shape[1]*2 
-        l = conv(l_in, num_filters=n_filters, filter_size=(1, 1),
+        n_filters = l_inp.output_shape[1]*2 
+        l = conv(l_inp, num_filters=n_filters, filter_size=(1, 1),
                  stride=(2, 2), nonlinearity=None, pad='same', b=None)
         l = batchnorm(l)
         return l
@@ -123,28 +124,36 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     # http://arxiv.org/abs/1512.03385
     def res_block_v1(l_inp, nonlinearity=nonlinearity,
                      increase_dim=False, projection=True):
+        print('block')
+        print(l_inp.output_shape)
         # first figure filters/strides
         n_filters, first_stride = filters_increase_dims(l_inp, increase_dim)
+        print(n_filters)
+        print(first_stride)
         # conv -> BN -> nonlin -> conv -> BN -> sum -> nonlin
         l = conv(l_inp, num_filters=n_filters, filter_size=(3, 3),
                  stride=first_stride, nonlinearity=None, pad='same',
                  W=lasagne.init.HeNormal(gain='relu'))
+        print(l.output_shape)
         l = batchnorm(l)
         l = nonlin_layer(l, nonlinearity=nonlinearity)
         l = conv(l, num_filters=n_filters, filter_size=(3, 3),
                  stride=(1, 1), nonlinearity=None, pad='same',
                  W=lasagne.init.HeNormal(gain='relu'))
+        print(l.output_shape)
         l = batchnorm(l)
-        if projection:
-            # projection shortcut option b in paper
-            p = projection_b(l_inp)
+        if increase_dim:
+            if projection:
+                # projection shortcut option b in paper
+                p = projection_b(l_inp)
+            else:
+                # identity shortcut, option a in paper
+                p = projection_a(l_inp)
         else:
-            # identity shortcut, option a in paper
-            p = projection_a(l_inp)
-        print(p.output_shape())
-        print(l.output_shape())
+            p = l_inp
+        print(p.output_shape)
+        print(l.output_shape)
         l = sumlayer([l, p])
-        print(l.output_shape())
         l = nonlin_layer(l, nonlinearity=nonlinearity)
         return l
 
@@ -251,15 +260,15 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     l_in = lasagne.layers.InputLayer(shape=(None, 1, 28, 28),
                                         input_var=input_var)
     # First layer! just a plain convLayer
-    l1 = conv(l_in, num_filters=num_filters, filter_size=(3, 3),
-              nonlinearity=None)
+    l1 = conv(l_in, num_filters=num_filters, stride=(1, 1),
+              filter_size=(3, 3), nonlinearity=None, pad='same')
     l1 = batchnorm(l1)
     l1 = nonlin_layer(l1)
 
     # Stacking bottlenecks and increasing dims! (while reducing shape size)
 
     l1_bs = blockstack(l1, n=n)
-    l1_id = res_block(l, increase_dim=True)
+    l1_id = res_block(l1_bs, increase_dim=True)
 
     l2_bs = blockstack(l1_id, n=n)
     l2_id = res_block(l2_bs, increase_dim=True)
