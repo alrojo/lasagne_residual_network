@@ -95,7 +95,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     def projection_a(l_inp, n_filters):
        n_filters = l_inp.output_shape[1]*2
        l = ExpressionLayer(l_inp, lambda X: X[:, :, ::2, ::2], lambda s: (s[0], s[1], s[2]//2, s[3]//2))
-       l = padding = PadLayer(identity, [n_filters//4,0,0], batch_ndim=1)
+       l = padding = PadLayer(l, [n_filters//4,0,0], batch_ndim=1)
        return l
 
     # option B for projection as described in paper
@@ -104,7 +104,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
         n_filters = l.output_shape[1]*2 
         l = conv(l_in, num_filters=n_filters, filter_size=(1, 1),
                  stride=(2, 2), nonlinearity=None, pad='same', b=None)
-        l = batchnorm(p)
+        l = batchnorm(l)
         return l
 
     # helper function to handle filters/strides when increasing dims
