@@ -25,10 +25,10 @@ Note: CUDA and CuDNN might require root privileges.
 
 The code is setup with CuDNN. If you do not have access to CuDNN then you need to comment out:
 * github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L21
-* github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L86
+* github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L90
 
 And remove comments from
-* github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L85
+* github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L89
 
 ## Set-up and run
 
@@ -46,14 +46,7 @@ An example of running with num_filters=8, num_bottlenecks per layer=3 and num_ep
 
 ## BatchNormLayer
 
-Using a different version of BatchNormLayer (f0k's original PR before turning to cuDNN style) see  github.com/Lasagne/Lasagne/pull/467 for more information.
-
-If you want to use the Lasagne's implementation then change:
-github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L22
-
-to
-
-import lasagne.layers.BatchNormLayer
+Using lasagnes implementation of BatchNormLayer which is the CuDNNv4 style implementation. See  github.com/Lasagne/Lasagne/pull/467 for more information.
 
 ## NOTE
 
