@@ -1,10 +1,10 @@
 # Lasagne implementation of Deep Residual Networks
 
-Recreating  Deep Residual Learning for Image Recognition
+Recreating Deep Residual Learning for Image Recognition
 
 http://arxiv.org/abs/1512.03385
 
-Recreading Identity Mappings in Deep Residual Networks (only pre-activation)
+Recreating Identity Mappings in Deep Residual Networks (only pre-activation)
 
 http://arxiv.org/abs/1603.05027
 
