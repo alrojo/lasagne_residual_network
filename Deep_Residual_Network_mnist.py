@@ -381,8 +381,20 @@ def main(n=1, num_filters=8, num_epochs=500):
     # parameters at each training step. Here, we'll use Stochastic Gradient
     # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
     params = lasagne.layers.get_all_params(network, trainable=True)
+
+    # several learning rates for low initial learning rates and
+    # learning rate anealing (id is epoch)
+    learning_rate_schedule = {
+    0: 0.00001, # low initial learning rate as described in paper
+    1: 0.01,
+    15: 0.001,
+    30: 0.0001
+    }
+
+    learning_rate = theano.shared(np.float32(learning_rate_schedule[0]))
+
     updates = lasagne.updates.nesterov_momentum(
-            loss, params, learning_rate=0.01, momentum=0.9)
+            loss, params, learning_rate=learning_rate, momentum=0.9)
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
@@ -406,6 +418,10 @@ def main(n=1, num_filters=8, num_epochs=500):
     print("Starting training...")
     # We iterate over epochs:
     for epoch in range(num_epochs):
+        if epoch in learning_rate_schedule:
+            lr = np.float32(learning_rate_schedule[epoch])
+            print(" setting learning rate to %.7f" % lr)
+            learning_rate.set_value(lr)
         # In each epoch, we do a full pass over the training data:
         train_err = 0
         train_batches = 0
