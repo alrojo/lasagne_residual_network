@@ -85,6 +85,7 @@ def ceildiv(a, b):
     return -(-a // b)
 
 def build_cnn(input_var=None, n=1, num_filters=8):
+    projection_type = 'B'
     # Setting up layers
 #    conv = lasagne.layers.Conv2DLayer
     conv = lasagne.layers.dnn.Conv2DDNNLayer # cuDNN
@@ -93,25 +94,34 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     sumlayer = lasagne.layers.ElemwiseSumLayer
     #batchnorm = BatchNormLayer.BatchNormLayer
     batchnorm = lasagne.layers.BatchNormLayer
-    expression = lasagne.layers.ExpressionLayer
-    pad = lasagne.layers.PadLayer
 
-    # option A for projection as described in paper
-    # (should perform slightly worse than B)
-    def projection_a(l_inp):
-       n_filters = l_inp.output_shape[1]*2
-       l = expression(l_inp, lambda X: X[:, :, ::2, ::2], lambda s: (s[0], s[1], ceildiv(s[2], 2), ceildiv(s[3], 2)))
-       l = pad(l, [n_filters//4,0,0], batch_ndim=1)
-       return l
+    # Setting the projection type for when reducing height/width
+    # and increasing dimensions.
+    # Default is 'B' as B performs slightly better
+    # and A requires newer version of lasagne with ExpressionLayer
+    projection_type = 'B'
+    if projection_type == 'A':
+        expression = lasagne.layers.ExpressionLayer
+        pad = lasagne.layers.PadLayer
 
-    # option B for projection as described in paper
-    def projection_b(l_inp):
-        # twice normal channels when projecting!
-        n_filters = l_inp.output_shape[1]*2 
-        l = conv(l_inp, num_filters=n_filters, filter_size=(1, 1),
-                 stride=(2, 2), nonlinearity=None, pad='same', b=None)
-        l = batchnorm(l)
-        return l
+    if projection_type == 'A':
+        # option A for projection as described in paper
+        # (should perform slightly worse than B)
+        def projection(l_inp):
+            n_filters = l_inp.output_shape[1]*2
+            l = expression(l_inp, lambda X: X[:, :, ::2, ::2], lambda s: (s[0], s[1], ceildiv(s[2], 2), ceildiv(s[3], 2)))
+            l = pad(l, [n_filters//4,0,0], batch_ndim=1)
+            return l
+
+    if projection_type == 'B':
+        # option B for projection as described in paper
+        def projection(l_inp):
+            # twice normal channels when projecting!
+            n_filters = l_inp.output_shape[1]*2 
+            l = conv(l_inp, num_filters=n_filters, filter_size=(1, 1),
+                     stride=(2, 2), nonlinearity=None, pad='same', b=None)
+            l = batchnorm(l)
+            return l
 
     # helper function to handle filters/strides when increasing dims
     def filters_increase_dims(l, increase_dims):
@@ -127,8 +137,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
 
     # block as described and used in cifar in the original paper:
     # http://arxiv.org/abs/1512.03385
-    def res_block_v1(l_inp, nonlinearity=nonlin,
-                     increase_dim=False, projection=True):
+    def res_block_v1(l_inp, nonlinearity=nonlin, increase_dim=False):
         # first figure filters/strides
         n_filters, first_stride = filters_increase_dims(l_inp, increase_dim)
         # conv -> BN -> nonlin -> conv -> BN -> sum -> nonlin
@@ -142,13 +151,10 @@ def build_cnn(input_var=None, n=1, num_filters=8):
                  W=lasagne.init.HeNormal(gain='relu'))
         l = batchnorm(l)
         if increase_dim:
-            if projection:
-                # projection shortcut option B in paper
-                p = projection_b(l_inp)
-            else:
-                # identity shortcut, option A in paper
-                p = projection_a(l_inp)
+            # Use projection (A, B) as described in paper
+            p = projection(l_inp)
         else:
+            # Identity shortcut
             p = l_inp
         l = sumlayer([l, p])
         l = nonlin_layer(l, nonlinearity=nonlin)
@@ -156,8 +162,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
 
     # block as described in second paper on the subject (by same authors):
     # http://arxiv.org/abs/1603.05027
-    def res_block_v2(l_inp, nonlinearity=nonlin,
-                     increase_dim=False, projection=False):
+    def res_block_v2(l_inp, nonlinearity=nonlin, increase_dim=False):
         # first figure filters/strides
         n_filters, first_stride = filters_increase_dims(l_inp, increase_dim)
         # BN -> nonlin -> conv -> BN -> nonlin -> conv -> sum
@@ -172,19 +177,15 @@ def build_cnn(input_var=None, n=1, num_filters=8):
                  stride=(1, 1), nonlinearity=None, pad='same',
                  W=lasagne.init.HeNormal(gain='relu'))
         if increase_dim:
-            if projection:
-                # projection shortcut option B in paper
-                p = projection_b(l_inp)
-            else:
-                # identity shortcut, option A in paper
-                p = projection_a(l_inp)
+            # Use projection (A, B) as described in paper
+            p = projection(l_inp)
         else:
+            # Identity shortcut
             p = l_inp
         l = sumlayer([l, p])
         return l
 
-    def bottleneck_block(l_inp, nonlinearity=nonlin,
-                         increase_dim=False, projection=False):
+    def bottleneck_block(l_inp, nonlinearity=nonlin, increase_dim=False):
         # first figure filters/strides
         n_filters, first_stride = filters_increase_dims(l_inp, increase_dim)
         # conv -> BN -> nonlin -> conv -> BN -> nonlin -> conv -> BN -> sum
@@ -206,13 +207,10 @@ def build_cnn(input_var=None, n=1, num_filters=8):
                  stride=(1, 1), nonlinearity=None, pad='same',
                  W=lasagne.init.HeNormal(gain='relu'))
         if increase_dim:
-            if projection:
-                # projection shortcut option b in paper
-                p = projection_b(l_inp)
-            else:
-                # identity shortcut, option a in paper
-                p = projection_a(l_inp)
+            # Use projection (A, B) as described in paper
+            p = projection(l_inp)
         else:
+            # Identity shortcut
             p = l_inp
         l = sumlayer([l, p])
         l = nonlin_layer(l, nonlinearity=nonlin)
@@ -220,8 +218,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
 
     # Bottleneck architecture with more efficiency (the post with Kaiming He's response)
     # https://www.reddit.com/r/MachineLearning/comments/3ywi6x/deep_residual_learning_the_bottleneck/ 
-    def bottleneck_block_fast(l_inp, nonlinearity=nonlin,
-                     increase_dim=False, projection=False):
+    def bottleneck_block_fast(l_inp, nonlinearity=nonlin, increase_dim=False):
         # first figure filters/strides
         n_filters, last_stride = filters_increase_dims(l_inp, increase_dim)
         # conv -> BN -> nonlin -> conv -> BN -> nonlin -> conv -> BN -> sum
@@ -243,21 +240,18 @@ def build_cnn(input_var=None, n=1, num_filters=8):
                  stride=last_stride, nonlinearity=None, pad='same',
                  W=lasagne.init.HeNormal(gain='relu'))
         if increase_dim:
-            if projection:
-                # projection shortcut option b in paper
-                p = projection_b(l_inp)
-            else:
-                # identity shortcut, option a in paper
-                p = projection_a(l_inp)
+            # Use projection (A, B) as described in paper
+            p = projection(l_inp)
         else:
+            # Identity shortcut
             p = l_inp
         l = sumlayer([l, p])
         l = nonlin_layer(l, nonlinearity=nonlin)
         return l
        
-    res_block = res_block_v1
+    res_block = bottleneck_block_fast
 
-    # Stacks the bottlenecks, makes it easy to model size of architecture with int n   
+    # Stacks the residual blocks, makes it easy to model size of architecture with int n   
     def blockstack(l, n, nonlinearity=nonlin):
         for _ in range(n):
             l = res_block(l, nonlinearity=nonlin)
