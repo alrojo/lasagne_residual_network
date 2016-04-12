@@ -128,7 +128,7 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     # block as described and used in cifar in the original paper:
     # http://arxiv.org/abs/1512.03385
     def res_block_v1(l_inp, nonlinearity=nonlin,
-                     increase_dim=False, projection=False):
+                     increase_dim=False, projection=True):
         # first figure filters/strides
         n_filters, first_stride = filters_increase_dims(l_inp, increase_dim)
         # conv -> BN -> nonlin -> conv -> BN -> sum -> nonlin
@@ -280,11 +280,10 @@ def build_cnn(input_var=None, n=1, num_filters=8):
     l2_id = res_block(l2_bs, increase_dim=True)
 
     l3_bs = blockstack(l2_id, n=n)
-    l3_id = res_block(l3_bs, increase_dim=True)
 
     # And, finally, the 10-unit output layer:
     network = lasagne.layers.DenseLayer(
-            l3_id,
+            l3_bs,
             num_units=10,
             nonlinearity=lasagne.nonlinearities.softmax)
 
@@ -385,10 +384,10 @@ def main(n=1, num_filters=8, num_epochs=500):
     # several learning rates for low initial learning rates and
     # learning rate anealing (id is epoch)
     learning_rate_schedule = {
-    0: 0.00001, # low initial learning rate as described in paper
-    1: 0.01,
-    15: 0.001,
-    30: 0.0001
+    0: 0.0001, # low initial learning rate as described in paper
+    2: 0.01,
+    100: 0.001,
+    150: 0.0001
     }
 
     learning_rate = theano.shared(np.float32(learning_rate_schedule[0]))
