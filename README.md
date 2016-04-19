@@ -23,16 +23,11 @@ Note: CUDA and CuDNN might require root privileges.
 
 ## CuDNN
 
-The code is setup with CuDNN. If you do not have access to CuDNN then you need to comment out:
-* github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L21
-* github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L90
-
-And remove comments from
-* github.com/alrojo/lasagne_residual_network/blob/master/Deep_Residual_Network_mnist.py#L89
+CuDNN is now disabled by default, to enable see below
 
 ## Set-up and run
 
-The code is based on lasagnes own mnist example: github.com/Lasagne/Lasagne/blob/master/examples/mnist.py
+The code is based on lasagne's own mnist example: github.com/Lasagne/Lasagne/blob/master/examples/mnist.py
 
 The data is placed in the main folder for ease of use, but if you do not have the data Deep_Residual_Network_mnist.py will automatically download it.
 
@@ -40,9 +35,9 @@ To get an overview of commandline inputs, run
 
 >>python Deep_Residual_Network_mnist.py -h
 
-An example of running with num_filters=8, num_bottlenecks per layer=3 and num_epochs=500
+An example of running with num_bottlenecks per layer=3, num_filters=8, num_epochs=500 and CuDNN=no
 
->>python Deep_Residual_Network_mnist.py 8 3 500
+>>python Deep_Residual_Network_mnist.py 3 8 500 no
 
 ## BatchNormLayer
 
@@ -50,4 +45,4 @@ Using lasagnes implementation of BatchNormLayer which is the CuDNNv4 style imple
 
 ## NOTE
 
-If any of the provided steps does not work for you please let me know and report an issue/PR.
+If any of the provided steps does not work for you please let me know and report an issue/PR, thanks!
