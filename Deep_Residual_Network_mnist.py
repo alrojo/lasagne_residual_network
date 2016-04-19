@@ -84,6 +84,7 @@ def ceildiv(a, b):
     return -(-a // b)
 
 def build_cnn(input_var=None, n=1, num_filters=8, cudnn='no'):
+    import lasagne # For some odd reason it can't read the global import, please PR/Issue if you know why
     projection_type = 'B'
     # Setting up layers
     if cudnn == 'yes':
