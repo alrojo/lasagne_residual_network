@@ -18,7 +18,6 @@ import theano
 import theano.tensor as T
 
 import lasagne
-import lasagne.layers.dnn
 import BatchNormLayer
 sys.setrecursionlimit(10000)
 # ################## Download and prepare the MNIST dataset ##################
@@ -84,11 +83,14 @@ def load_dataset():
 def ceildiv(a, b):
     return -(-a // b)
 
-def build_cnn(input_var=None, n=1, num_filters=8):
+def build_cnn(input_var=None, n=1, num_filters=8, cudnn='no'):
     projection_type = 'B'
     # Setting up layers
-#    conv = lasagne.layers.Conv2DLayer
-    conv = lasagne.layers.dnn.Conv2DDNNLayer # cuDNN
+    if cudnn == 'yes':
+        import lasagne.layer.dnn
+        conv = lasagne.layers.dnn.Conv2DDNNLayer # cuDNN
+    else:
+        conv = lasagne.layers.Conv2DLayer
     nonlin = lasagne.nonlinearities.rectify
     nonlin_layer = lasagne.layers.NonlinearityLayer
     sumlayer = lasagne.layers.ElemwiseSumLayer
@@ -311,10 +313,11 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 # more functions to better separate the code, but it wouldn't make it any
 # easier to read.
 
-def main(n=1, num_filters=8, num_epochs=500):
+def main(n=1, num_filters=8, num_epochs=500, cudnn='no'):
     assert n>=0
     assert num_filters>0
     assert num_epochs>0
+    assert cudnn in ['yes', 'no']
     print("Amount of bottlenecks: %d" % n)
     # Load the dataset
     print("Loading data...")
@@ -326,7 +329,7 @@ def main(n=1, num_filters=8, num_epochs=500):
 
     # Create neural network model (depending on first command line parameter)
     print("Building model and compiling functions...")
-    network = build_cnn(input_var, n, num_filters)
+    network = build_cnn(input_var, n, num_filters, cudnn)
     all_layers = lasagne.layers.get_all_layers(network)
     num_params = lasagne.layers.count_params(network)
     num_conv = 0
@@ -473,14 +476,17 @@ if __name__ == '__main__':
         print("Usage: %s [NUM_BOTTLENECKS] [NUM_FILTERS] [EPOCHS]" % sys.argv[0])
         print()
         print("NUM_BOTTLENECKS: Define amount of bottlenecks with integer, e.g. 3")
-	print("NUM_FILTERS: Defines the amount of filters in the first layer(doubled at each filter halfing)")
+        print("NUM_FILTERS: Defines the amount of filters in the first layer(doubled at each filter halfing)")
         print("EPOCHS: number of training epochs to perform (default: 500)")
+        print("CUDNN: 'no' to not use, 'yes' to use (default: 'no')")
     else:
         kwargs = {}
         if len(sys.argv) > 1:
             kwargs['n'] = int(sys.argv[1])
-	if len(sys.argv) > 2:
-	    kwargs['num_filters'] = int(sys.argv[2])
-        if len(sys.argv) > 3:
-            kwargs['num_epochs'] = int(sys.argv[3])
-        main(**kwargs)
+    if len(sys.argv) > 2:
+        kwargs['num_filters'] = int(sys.argv[2])
+    if len(sys.argv) > 3:
+        kwargs['num_epochs'] = int(sys.argv[3])
+    if len(sys.argv) > 4:
+        kwargs['cudnn'] = sys.argv[4]
+    main(**kwargs)
