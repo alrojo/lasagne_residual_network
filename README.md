@@ -35,7 +35,7 @@ To get an overview of commandline inputs, run
 
 >>python Deep_Residual_Network_mnist.py -h
 
-An example of running with num_bottlenecks per layer=3, num_filters=8, num_epochs=500 and CuDNN=no
+An example of running with num_blocks/res_units per layer=3, num_filters=8, num_epochs=500 and CuDNN=no
 
 >>python Deep_Residual_Network_mnist.py 3 8 500 no
 
