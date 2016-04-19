@@ -87,7 +87,7 @@ def build_cnn(input_var=None, n=1, num_filters=8, cudnn='no'):
     projection_type = 'B'
     # Setting up layers
     if cudnn == 'yes':
-        import lasagne.layer.dnn
+        import lasagne.layers.dnn
         conv = lasagne.layers.dnn.Conv2DDNNLayer # cuDNN
     else:
         conv = lasagne.layers.Conv2DLayer
