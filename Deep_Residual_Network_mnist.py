@@ -252,7 +252,7 @@ def build_cnn(input_var=None, n=1, num_filters=8, cudnn='no'):
         l = nonlin_layer(l, nonlinearity=nonlin)
         return l
        
-    res_block = bottleneck_block_fast
+    res_block = res_block_v1
 
     # Stacks the residual blocks, makes it easy to model size of architecture with int n   
     def blockstack(l, n, nonlinearity=nonlin):
