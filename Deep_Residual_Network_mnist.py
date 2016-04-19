@@ -479,15 +479,15 @@ if __name__ == '__main__':
         print("NUM_BOTTLENECKS: Define amount of bottlenecks with integer, e.g. 3")
         print("NUM_FILTERS: Defines the amount of filters in the first layer(doubled at each filter halfing)")
         print("EPOCHS: number of training epochs to perform (default: 500)")
-        print("CUDNN: 'no' to not use, 'yes' to use (default: 'no')")
+        print("CUDNN: no to not use, yes to use (default: no)")
     else:
         kwargs = {}
         if len(sys.argv) > 1:
             kwargs['n'] = int(sys.argv[1])
-    if len(sys.argv) > 2:
-        kwargs['num_filters'] = int(sys.argv[2])
-    if len(sys.argv) > 3:
-        kwargs['num_epochs'] = int(sys.argv[3])
-    if len(sys.argv) > 4:
-        kwargs['cudnn'] = sys.argv[4]
-    main(**kwargs)
+        if len(sys.argv) > 2:
+            kwargs['num_filters'] = int(sys.argv[2])
+        if len(sys.argv) > 3:
+            kwargs['num_epochs'] = int(sys.argv[3])
+        if len(sys.argv) > 4:
+            kwargs['cudnn'] = sys.argv[4]
+        main(**kwargs)
